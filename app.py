@@ -3,6 +3,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import pickle
 
 
 
@@ -114,3 +115,75 @@ with col1:
     children()
 with col2:
     scatterplot1()
+
+
+#user input
+
+# function to find BMI value
+def bmi(height,weight):
+    h=height/100
+    bmi_value = weight/(h**2)
+    return bmi_value
+
+#Getting user input
+def user_inputs():
+
+    #header
+    st.header("User Dashboard")
+
+    #Dashboard elements
+    age = st.slider('Your Age',1,100,30)
+    sex = st.selectbox('Select Your Gender',['male','female'])
+    height = st.slider('Your Height in (cm)',50,250,150)
+    weight = st.slider('Your Weight in (Kg)',10,150,50)
+    children = st.selectbox('Number of Childrens in Your Family',[0,1,2,3,4,5])
+    smoker = st.radio('Smoker', ['yes','no'])
+    region = st.radio('Select Your Region',['northeast','northwest','southeast','southwest'])
+    
+    #reading user data as a dictionary
+    bmi1 = bmi(height, weight)
+    input_data={
+        'age':age,
+        'sex':sex,
+        'bmi':bmi1,
+        'children':children,
+        'smoker':smoker,
+        'region':region
+    }
+    
+    #getting the copy of original data
+    df = data.copy()
+    #drop the predicting colmn
+    df.drop('charges', axis=1, inplace=True)
+    #input data as dataframe
+    user_data = pd.DataFrame(input_data, index=[0])
+    #concatenate original dataframe and user input dataframe
+    user_df = pd.concat([df,user_data],ignore_index=True, axis=0)
+    #getting dummies(categorical varaibles encoding)
+    user_dum_data = pd.get_dummies(user_df, columns=['sex','children','smoker','region'], drop_first=True)
+    #selecting the last row which is the user inputs
+    user_input_data = user_dum_data.iloc[-1,:]
+    #reading the user input data as a dataframe
+    final_user_data = pd.DataFrame([user_input_data.array], columns=user_dum_data.columns)
+    #user data
+    st.subheader("User Data")
+    st.dataframe(final_user_data)
+    #returning data
+    return final_user_data
+
+user_results = user_inputs()
+
+#Cost predictions
+
+#loading the model
+model = pickle.load(open("insurance_predict.pkl",'rb'))
+#predicting the results
+results = list(model.predict(user_results))
+
+#setting the accuarcies, predictions
+st.subheader("Predictions and Accuracies")
+col3,col4 = st.columns(2)
+with col3:
+    st.metric("Insurance cost", str(results[0]))
+with col4:
+    st.metric("RMSE of the model", 4674.719889567355)
